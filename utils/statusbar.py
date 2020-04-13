@@ -1,8 +1,9 @@
 from abc import ABC, abstractclassmethod
-from typing import Union
+from typing import Union, List
 from os import system, name
 from copy import deepcopy
 from time import sleep
+from sys import argv
 
 
 def clear():
@@ -10,7 +11,10 @@ def clear():
         system('cls')
     else:
         system('clear')
-    # clear_output(wait=True)
+
+
+def indent(lines: str) -> str:
+    return '\n'.join(map(lambda line: f'\t{line}', lines.split('\n')))
 
 
 class Reportable:
@@ -21,8 +25,8 @@ class Reportable:
         self.all_ticks = 0
         self.ticks = 0
         self.limit = limit
-        self.upd = False
         self.__every = 1
+        self.__cache = ''
 
     def __ensure(self, ticks, limit):
         if ticks is None:
@@ -35,8 +39,8 @@ class Reportable:
         ticks, limit = self.__ensure(ticks, limit)
         ratio = ticks / limit
         items = int(self.__width * ratio)
-        sep = self.__item if ratio == 1 else '>'
-        return f'[{self.__item * items}{sep}{" " * (self.__width - items - 1)}] {self._percent(ticks, limit)}'
+        empty = '' if ratio == 1 else f'>{" " * (self.__width - items - 1)}'
+        return f'[{self.__item * items}{empty}] {self._percent(ticks, limit)}'
 
     def _percent(self, ticks=None, limit=None) -> str:
         ticks, limit = self.__ensure(ticks, limit)
@@ -53,14 +57,23 @@ class Reportable:
             return True
         return False
 
-    def step(self):
-        if self.tick() and (self.upd or self.all_ticks % self.__every == 0):
+    def _cached_print(self):
+        out = self.__repr__()
+        if out != self.__cache and self.all_ticks % self.__every == 0:
+            self.__cache = out
             clear()
-            print(self)
-            self.upd = False
+            print(out)
+
+    def step(self):
+        if self.tick():
+            self._cached_print()
+
+    def width(self, width: int):
+        Reportable.__width = width
+        return self
 
     def every(self, num: int):
-        self.__every = num
+        Reportable.__every = num
         return self
 
     def full_limit(self):
@@ -69,7 +82,7 @@ class Reportable:
 
 class Stage(Reportable):
     def __init__(self, name: str, limit: int):
-        super().__init__(limit - 1)
+        super().__init__(limit)
         self.name = name
 
     def __repr__(self) -> str:
@@ -78,7 +91,8 @@ class Stage(Reportable):
 
 class Iterations(Reportable):
     def __init__(self, limit: int, rep: Reportable):
-        super().__init__(limit - 1)
+        super().__init__(limit)
+        self.ticks += 1
         self.origin = rep
         self.rep = deepcopy(self.origin)
 
@@ -87,7 +101,6 @@ class Iterations(Reportable):
             self.all_ticks += 1
             return True
         if self.ticks < self.limit:
-            self.upd = True
             self.ticks += 1
             self.rep = deepcopy(self.origin)
             return self.tick()
@@ -96,15 +109,8 @@ class Iterations(Reportable):
     def full_limit(self):
         return self.limit * self.rep.full_limit()
 
-    def as_sequential(self):
-        stages = [deepcopy(self.origin) for _ in range(self.limit)]
-        for i, s in enumerate(stages):
-            if isinstance(s, Stage):
-                s.name += f' #{i + 1}'
-        return Sequential(*stages)
-
     def __repr__(self):
-        return f'Iteration {self._ratio(self.ticks + 1, self.limit + 1)}:\n{self.rep}'
+        return f'Iteration {self._ratio()}:\n{self.rep}'
 
 
 class Sequential(Reportable):
@@ -122,7 +128,6 @@ class Sequential(Reportable):
             self.all_ticks += 1
             return True
         if self.ticks < self.limit:
-            self.upd = True
             self.ticks += 1
             return self.tick()
         return False
@@ -132,12 +137,13 @@ class Sequential(Reportable):
 
     def __repr__(self):
         return f'Progress (step {self._ratio(self.ticks + 1, self.limit + 1)}):\n' \
-               f'{self._bar(self.all_ticks, self.all_limit)}\n' \
-               f'{self.__stage()}'
+               f'{self._bar(self.all_ticks, self.all_limit)}\n' + \
+               indent(''.join(map(str, self.stages[:self.ticks + 1])))
 
 
 if __name__ == '__main__':
     status = Sequential(
+        Stage("Singleton", 1),
         Stage("Stage 1", 400),
         Iterations(
             3,
@@ -146,8 +152,12 @@ if __name__ == '__main__':
                 Stage("Stage 3", 300)
             )
         )
-    ).every(10)
-    print(status)
+    ).every(10).width(50)
+
+    status.__getattribute__('_cached_print')()
+    wait = 0.001
+    if len(argv) > 1 and argv[1] == '--debug':
+        wait = 0.1
     while True:
         status.step()
-        sleep(0.01)
+        sleep(wait)
