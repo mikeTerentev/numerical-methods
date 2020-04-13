@@ -21,7 +21,8 @@ class Reportable:
     __width = 100
     __item = '-'
 
-    def __init__(self, limit: int):
+    def __init__(self, name: str, limit: int):
+        self.name = name
         self.all_ticks = 0
         self.ticks = 0
         self.limit = limit
@@ -51,7 +52,7 @@ class Reportable:
         return f'{ticks}/{limit}'
 
     def tick(self) -> bool:
-        if self.ticks < self.limit:
+        if not self.is_full():
             self.all_ticks += 1
             self.ticks += 1
             return True
@@ -59,10 +60,13 @@ class Reportable:
 
     def _cached_print(self):
         out = self.__repr__()
-        if out != self.__cache and self.all_ticks % self.__every == 0:
+        if out != self.__cache and (self.all_ticks % self.__every == 0 or self.is_full()):
             self.__cache = out
             clear()
             print(out)
+
+    def is_full(self):
+        return self.ticks == self.limit
 
     def step(self):
         if self.tick():
@@ -73,7 +77,7 @@ class Reportable:
         return self
 
     def every(self, num: int):
-        Reportable.__every = num
+        self.__every = num
         return self
 
     def full_limit(self):
@@ -82,27 +86,31 @@ class Reportable:
 
 class Stage(Reportable):
     def __init__(self, name: str, limit: int):
-        super().__init__(limit)
+        super().__init__(name, limit)
         self.name = name
 
     def __repr__(self) -> str:
         return f'{self.name}:\n{self._bar()}\n'
 
 
-class Iterations(Reportable):
+class Iteration(Reportable):
     def __init__(self, limit: int, rep: Reportable):
-        super().__init__(limit)
+        super().__init__('Iteration', limit)
         self.ticks += 1
         self.origin = rep
+        self.__new_rep()
+
+    def __new_rep(self):
         self.rep = deepcopy(self.origin)
+        self.rep.name += f' #{self.ticks}'
 
     def tick(self) -> bool:
         if self.rep.tick():
             self.all_ticks += 1
             return True
-        if self.ticks < self.limit:
+        if not self.is_full():
             self.ticks += 1
-            self.rep = deepcopy(self.origin)
+            self.__new_rep()
             return self.tick()
         return False
 
@@ -110,12 +118,12 @@ class Iterations(Reportable):
         return self.limit * self.rep.full_limit()
 
     def __repr__(self):
-        return f'Iteration {self._ratio()}:\n{self.rep}'
+        return f'{self.name} {self._ratio()}:\n{self.rep}'
 
 
-class Sequential(Reportable):
+class Sequence(Reportable):
     def __init__(self, *args: Reportable):
-        super().__init__(len(args) - 1)
+        super().__init__('All', len(args) - 1)
         self.stages = args
         self.all_ticks = 0
         self.all_limit = self.full_limit()
@@ -123,31 +131,37 @@ class Sequential(Reportable):
     def __stage(self):
         return self.stages[self.ticks]
 
+    def __next_stage(self) -> bool:
+        if not self.is_full():
+            self.ticks += 1
+            return True
+        return False
+
     def tick(self) -> bool:
         if self.__stage().tick():
             self.all_ticks += 1
+            if self.__stage().is_full():
+                self.__next_stage()
             return True
-        if self.ticks < self.limit:
-            self.ticks += 1
-            return self.tick()
-        return False
+        else:
+            return self.__next_stage() and self.tick()
 
     def full_limit(self):
         return sum([s.full_limit() for s in self.stages])
 
     def __repr__(self):
-        return f'Progress (step {self._ratio(self.ticks + 1, self.limit + 1)}):\n' \
+        return f'{self.name} (step {self._ratio(self.ticks + 1, self.limit + 1)}):\n' \
                f'{self._bar(self.all_ticks, self.all_limit)}\n' + \
                indent(''.join(map(str, self.stages[:self.ticks + 1])))
 
 
 if __name__ == '__main__':
-    status = Sequential(
+    status = Sequence(
         Stage("Singleton", 1),
         Stage("Stage 1", 400),
-        Iterations(
+        Iteration(
             3,
-            Sequential(
+            Sequence(
                 Stage("Stage 2", 200),
                 Stage("Stage 3", 300)
             )

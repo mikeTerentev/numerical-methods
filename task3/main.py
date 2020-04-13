@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from utils.statusbar import Sequential, Stage
+from utils.statusbar import Stage, Iteration, Sequence
 
 plt.style.use('ggplot')
 
@@ -106,10 +106,10 @@ def newton_iterations(z):
 
 
 def do():
-    status = Sequential(
-        Stage('Rows', divx + 1).every(divx // 100),
+    status = Sequence(
+        Stage('Drawing', divx + 1),
         Stage('Graph', 1)
-    ).every(20)
+    ).width(50)
 
     points = [[], [], [], []]
     print(status)
