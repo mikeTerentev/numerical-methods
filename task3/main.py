@@ -1,11 +1,13 @@
 import os
 import math
 import numpy as np
+import colorsys
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from typing import List
+from typing import List, Callable
 from utils.statusbar import Stage, Iteration, Sequence
+from utils.coloring import red_green_range, distinct_palette
 
 plt.style.use('ggplot')
 
@@ -19,15 +21,14 @@ def squared_distance(z1: complex, z2: complex) -> float:
 
 
 class PictureEnv:
-    colors = ['red', 'green', 'blue', 'black']
-
-    def __init__(self, lx: int, ly: int, rx=None, ry=None, px=1000, py=1000):
+    def __init__(self, lx: int, ly: int, rx=None, ry=None, px=1000, py=1000, c=3):
         self.lx = lx
         self.rx = rx if rx is not None else abs(lx)
         self.ly = ly
         self.ry = ry if ry is not None else abs(ly)
         self.px = px
         self.py = py
+        self.colors = distinct_palette(c)
 
     def width(self):
         return self.rx - self.lx
@@ -40,8 +41,17 @@ class Plane:
     eps = 1e-5
     Eps = 1e5
 
-    def __init__(self, roots):
+    def __init__(self, roots: List[complex], *args: Callable[[complex], complex]):
         self.roots = roots
+        self.transformers = args
+        self.id = 0
+
+    def select_transformer(self, tid: int):
+        self.id = tid
+        return self
+
+    def transform(self, z):
+        return self.transformers[self.id](z)
 
     def check(self, z: complex):
         """Positioning status of complex number
@@ -67,14 +77,7 @@ class NewtonIterator:
         self.plane = plane
 
     def newton_iterations(self, z: complex) -> (List[complex], int):
-        """Multiple iteration transition z_j -> z_{j+1}
-
-        z_{j+1} = z_j - f(z_j) / f'(z_j)
-            f(z) = z^3 - 1
-            f'(z) = 3 * z^2
-        z_{j+1} = z_j - (z_j^3 - 1) / (3 * z_j^2)
-        z_{j+1} = (3 * z_j^3 - z_j^3 + 1) / (3 * z_j^2)
-        z_{j+1} = (2 * z_j^3 + 1) / (3 * z_j^2)
+        """Multiple iteration transition z -> lim z_j
 
         :param z: previous iteration value
         :return: positioning status of iteration limit
@@ -83,32 +86,7 @@ class NewtonIterator:
         while self.plane.check(z) is None:
             if z == 0.0:
                 return sequence, -1
-            z = (2 * (z ** 3) + 1) / (3 * (z ** 2))
-            sequence.append(z)
-        return sequence, self.plane.check(z)
-
-    def newton_iterations_alternative(self, z: complex) -> (List[complex], int):
-        """Multiple iteration transition (in real/imag form)
-
-        z_{j+1} = (2 / 3) * z_j + (1 / 3) * (1 / z_j^2)
-            z_j = re + im * i
-        z_{j+1} = (2 / 3) * z_j + (1 / 3) * (1 / (re^2 - im^2 + 2 re * im * i))
-        z_{j+1} = (2 / 3) * z_j + (1 / 3) * ((re^2 - im^2 - 2 re * im * i) / ((re^2 - im^2)^2 + 4 re^2 * im^2))
-        z_{j+1} = (2 / 3) * z_j + (1 / 3) * ((re^2 - im^2 - 2 re * im * i) / (re^2 + im^2)^2)
-        z_{j+1} = (2 / 3) * re + (1 / 3) * (re^2 - im^2) / (re^2 + im^2)^2 +
-                + (2 / 3) * (im - re * im / (re^2 + im^2)^2) * i
-
-        :param z: previous iteration value
-        :return: positioning status of iteration limit
-        """
-        sequence = [z]
-        while self.plane.check(z) is None:
-            denominator = ((z.real ** 2.0) + (z.imag ** 2.0)) ** 2.0
-            if denominator == 0.0:
-                return sequence, -1
-            new_re = (2.0 / 3.0) * z.real + (1.0 / 3.0) * ((z.real ** 2.0) - (z.imag ** 2.0)) / denominator
-            new_im = (2.0 / 3.0) * (z.imag - (z.real * z.imag) / denominator)
-            z = complex(new_re, new_im)
+            z = self.plane.transform(z)
             sequence.append(z)
         return sequence, self.plane.check(z)
 
@@ -116,13 +94,13 @@ class NewtonIterator:
         s, k = self.newton_iterations(z)
         x = [zz.real for zz in s]
         y = [zz.imag for zz in s]
-        size = max(1, max(max(x) - min(x), max(y) - min(y)) / 2 / len(s))
         root = self.plane.roots[k]
 
         plt.figure()
-        plt.plot(x, y, 'o', color='black', markersize=size, scalex=1, scaley=1)
-        plt.plot(z.real, z.imag, 'o', color='red', markersize=size + 1, scalex=1, scaley=1)
-        plt.plot(root.real, root.imag, 'o', color='blue', markersize=size + 1, scalex=1, scaley=1)
+        plt.axis('equal')
+        plt.scatter(x, y, s=np.linspace(10, 4, len(s)), c=red_green_range(len(s)))
+        plt.plot(x, y, 'o', color='black', ls='-', ms=1)
+        plt.plot(root.real, root.imag, 'gh', ms=7)
         plt.savefig(os.path.join(os.getcwd(), 'task3', 'out', filename))
 
     def save_classification(self, limits: PictureEnv, filename: str, verbose=True):
@@ -147,10 +125,11 @@ class NewtonIterator:
                 status.step()
 
         plt.figure()
+        plt.axis('equal')
         for i in range(roots + 1):
             x = [z.real for z in points[i]]
             y = [z.imag for z in points[i]]
-            plt.plot(x, y, 'o', color=limits.colors[i], markersize=1, scalex=1, scaley=1)
+            plt.plot(x, y, 'o', color=limits.colors[i], ms=1)
         plt.savefig(os.path.join(os.getcwd(), 'task3', 'out', filename))
         if verbose:
             status.step()
