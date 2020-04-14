@@ -1,5 +1,11 @@
 import math
+import numpy as np
+
 from task3.main import NewtonIterator, Plane, PictureEnv
+
+
+def random(low, high, size):
+    return low + np.random.random(size) * (high - low)
 
 
 def task1():
@@ -38,12 +44,20 @@ def task3():
             (2.0 / 3.0) * (z.imag - (z.real * z.imag) / denominator)
         ) / (((z.real ** 2.0) + (z.imag ** 2.0)) ** 2.0)
     ).select_transformer(0))
-    # for i, z in enumerate([1.0 + 0.75j, -1 - 0.5j, 1.5 + 0.5j]):
-    #     ni.save_sequence(z, f'sequence-{i}.png')
-    ni.save_classification(
-        PictureEnv(lx=-2, ly=-2, px=500, py=500, c=4),
-        'classification.png'
-    )
+
+    limits = PictureEnv(lx=-2, ly=-2, px=500, py=500, c=4)
+    ni.sequence(
+        [1.0 + 0.75j, -1 - 0.5j, 1.5 + 0.5j],
+        limits,
+        'sequence'
+    ).sequence(
+        random(limits.lx, limits.rx, 30) + 1j * random(limits.ly, limits.ry, 30),
+        limits,
+        'random-sequence'
+    ).classification(
+        limits,
+        'classification'
+    ).run()
 
 
 if __name__ == '__main__':

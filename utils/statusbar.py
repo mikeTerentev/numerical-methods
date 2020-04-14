@@ -66,7 +66,7 @@ class Reportable:
             print(out)
 
     def is_full(self):
-        return self.ticks == self.limit
+        return self.all_ticks == self.full_limit()
 
     def step(self):
         if self.tick():
@@ -122,8 +122,8 @@ class Iteration(Reportable):
 
 
 class Sequence(Reportable):
-    def __init__(self, *args: Reportable):
-        super().__init__('All', len(args) - 1)
+    def __init__(self, name: str, *args: Reportable):
+        super().__init__(name, len(args) - 1)
         self.stages = args
         self.all_ticks = 0
         self.all_limit = self.full_limit()
@@ -157,11 +157,13 @@ class Sequence(Reportable):
 
 if __name__ == '__main__':
     status = Sequence(
+        'All',
         Stage("Singleton", 1),
         Stage("Stage 1", 400),
         Iteration(
             3,
             Sequence(
+                'Inner',
                 Stage("Stage 2", 200),
                 Stage("Stage 3", 300)
             )
