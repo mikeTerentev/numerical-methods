@@ -41,7 +41,7 @@ def task3():
         #         + (2 / 3) * (im - re * im / (re^2 + im^2)^2) * i
         lambda z: complex(
             (2.0 / 3.0) * z.real + (1.0 / 3.0) * ((z.real ** 2.0) - (z.imag ** 2.0)),
-            (2.0 / 3.0) * (z.imag - (z.real * z.imag) / denominator)
+            (2.0 / 3.0) * (z.imag - (z.real * z.imag))
         ) / (((z.real ** 2.0) + (z.imag ** 2.0)) ** 2.0)
     ).select_transformer(0))
 
