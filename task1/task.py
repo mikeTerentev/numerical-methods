@@ -45,8 +45,12 @@ eps = 1e-9
 
 #draw()
 
-with open("out.csv", "w", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow(["a", "b", "x", "y", "iteration"])
-    writer.writerows(newton(6.7, 6.9))
+specs = [["out1.csv", -3, -1.5], ["out2.csv", -1, 0], ["out3.csv", 6, 8]]
+
+for spec in specs:
+    with open(spec[0], "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["a", "b", "x", "y", "iteration"])
+        writer.writerows(newton(spec[1], spec[2]))
+
 #print(newton(6.7, 6.9))
