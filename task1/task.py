@@ -45,7 +45,7 @@ eps = 1e-9
 
 #draw()
 
-specs = [["out1.csv", -3, -1.5], ["out2.csv", -1, 0], ["out3.csv", 6, 8]]
+specs = [["out1.csv", -1.9, -1.5], ["out2.csv", -1.0, -0.8], ["out3.csv", 6.4, 7.1]]
 
 for spec in specs:
     with open(spec[0], "w", newline="") as f:
