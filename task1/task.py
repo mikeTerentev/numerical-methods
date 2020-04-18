@@ -1,3 +1,4 @@
+import csv
 import numpy as np
 import math, random
 import matplotlib.pyplot as pyplot
@@ -24,7 +25,7 @@ def calcentry(x, it):
     root = np.asarray(tangent.r)
     assert(len(root) == 1)
     assert(abs(tangent(x) - polynom(x)) < eps)
-    return [root[0], 0, x, tangent(x), x, it]
+    return [tangent[1], tangent[0], x, tangent(x), it]
 
 def newton(l, r):
     xs = [random.uniform(l, r)]
@@ -40,9 +41,12 @@ def newton(l, r):
 
 polynom = np.poly1d([1, -5, -12, 0, 0, math.sqrt(2), 0, -4])
 deriv = np.poly1d.deriv(polynom)
-eps = 1e-6
+eps = 1e-9
 
 #draw()
 
-newton(6.7, 6.9)
+with open("out.csv", "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(["a", "b", "x", "y", "iteration"])
+    writer.writerows(newton(6.7, 6.9))
 #print(newton(6.7, 6.9))
