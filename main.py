@@ -38,13 +38,14 @@ def task3():
         limits,
         'sequence'
     ).sequence(
-        random(limits.lx, limits.rx, 30) + 1j * random(limits.ly, limits.ry, 30),
+        random(limits.lx, limits.rx, 15) + 1j * random(limits.ly, limits.ry, 15),
         limits,
         'random-sequence'
-    ).classification(
-        limits,
-        'classification-other'
     ).run()
+    # ).classification(
+    #     limits,
+    #     'classification-other'
+    # ).run()
 
 
 if __name__ == '__main__':
