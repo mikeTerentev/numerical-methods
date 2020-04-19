@@ -30,9 +30,9 @@ def task3():
             (z.real ** 2.0) - (z.imag ** 2.0),
             - 2 * z.real * z.imag
         ) / (3 * ((z.real ** 2.0) + (z.imag ** 2.0)) ** 2.0)
-    ).select_transformer(0))
+    ).select_transformer(1))
 
-    limits = PictureEnv(lx=-2, ly=-2, px=2000, py=2000, c=4)
+    limits = PictureEnv(lx=-2, ly=-2, px=1000, py=1000, c=4)
     ni.sequence(
         [1.0 + 0.75j, -1 - 0.5j, 1.5 + 0.5j],
         limits,
@@ -43,7 +43,7 @@ def task3():
         'random-sequence'
     ).classification(
         limits,
-        'classification'
+        'classification-other'
     ).run()
 
 
