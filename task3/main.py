@@ -38,8 +38,8 @@ class PictureEnv:
 
 
 class Plane:
-    eps = 1e-5
-    Eps = 1e5
+    eps = 1e-10
+    Eps = 1e10
 
     def __init__(self, roots: List[complex], *args: Callable[[complex], complex]):
         self.roots = roots

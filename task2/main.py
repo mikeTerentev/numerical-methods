@@ -12,7 +12,7 @@ def fixed_point_iteration(f, x0, iter_num):
         Function to explore.
     iter_num : int
         Number of iterations.
-    r : float
+    x0 : float
         Parameter in equation.
 
     Returns list of iteration points
